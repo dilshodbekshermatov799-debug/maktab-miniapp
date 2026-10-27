@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maktab Nazorat Tizimi</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; color: #333; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        h2 { font-size: 18px; color: #2c3e50; margin-top: 0; }
+        label { font-weight: bold; display: block; margin: 10px 0 5px; font-size: 14px; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .tab-btn { width: 48%; padding: 10px; border: none; background: #e0e0e0; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { background: #0088cc; color: white; }
+        .btn-submit { width: 100%; padding: 12px; border: none; background: #27ae60; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+        <button class="tab-btn active" id="hwTab" onclick="switchTab('hw')">📚 Uyga vazifa</button>
+        <button class="tab-btn" id="clubTab" onclick="switchTab('club')">🏆 To'garak</button>
+    </div>
+
+    <!-- UYGA VAZIFA SHAKLI -->
+    <div id="hwForm" class="card">
+        <h2>Uyga vazifa hisoboti</h2>
+        <label>Sinfni tanlang:</label>
+        <select id="classSelect" onchange="filterStudents()">
+            <option value="">-- Sinfni tanlang --</option>
+        </select>
+
+        <label>O'quvchini tanlang (yoki qidiring):</label>
+        <input type="text" id="studentSearch" placeholder="O'quvchi ismini yozing..." oninput="filterStudents()">
+        <select id="studentSelect" size="5" style="margin-top: 5px;"></select>
+
+        <label>Vazifa holati:</label>
+        <select id="hwStatus">
+            <option value="Bajardi">✅ Bajardi</option>
+            <option value="Bajarmadi">❌ Bajarmadi</option>
+            <option value="Chala">⚠️ Chala bajardi</option>
+        </select>
+        <button class="btn-submit" onclick="sendHomework()">Saqlash va Davom etish</button>
+    </div>
+
+    <!-- TO'GARAK SHAKLI -->
+    <div id="clubForm" class="card" style="display: none;">
+        <h2>To'garak mashg'uloti hisoboti</h2>
+        <label>To'garakni tanlang:</label>
+        <select id="clubSelect">
+            <option value="">-- To'garakni tanlang --</option>
+        </select>
+
+        <label>Qatnashgan o'quvchilar soni:</label>
+        <input type="number" id="attendanceCount" placeholder="Masalan: 15">
+        <button class="btn-submit" onclick="sendClubReport()">Saqlash va Davom etish</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Ma'lumotlar bazasi namunalari (Avtomatik yuklanadi)
+        const classes = ["1-A", "1-B", "1-V", "1-G", "1-D", "2-A", "2-B", "2-V", "2-G", "2-D", "5-A", "10-A", "11-A"];
+        const students = [
+            {id: 1, class: "1-A", name: "SHERKUZIYEVA OMINAXON KAXRAMON QIZI"},
+            {id: 2, class: "1-G", name: "ABDIMALIKOV MUHAMMADISMOIL GOLIBJON O`G`LI"},
+            {id: 3, class: "1-D", name: "XOLMIRZAYEV MUHAMMADISLOM ZOKIRJON O`G`LI"},
+            {id: 4, class: "5-A", name: "Aliyev Vali"},
+            {id: 5, class: "10-A", name: "Karimova Zulfiya"}
+        ];
+        const clubs = ["Ona tili fani tog`aragi", "Rus tili fani tog`aragi", "Ingliz tili fani tog`aragi", "Matematika fani tog`aragi", "Informatika fani tog`aragi", "Jismoniy tarbiya fani tog`aragi"];
+
+        window.onload = function() {
+            const classSel = document.getElementById("classSelect");
+            classes.forEach(c => classSel.innerHTML += `<option value="${c}">${c}</option>`);
+
+            const clubSel = document.getElementById("clubSelect");
+            clubs.forEach(c => clubSel.innerHTML += `<option value="${c}">${c}</option>`);
+        };
+
+        function filterStudents() {
+            const selectedClass = document.getElementById("classSelect").value;
+            const search = document.getElementById("studentSearch").value.toLowerCase();
+            const studentSel = document.getElementById("studentSelect");
+            studentSel.innerHTML = "";
+
+            students.filter(s => {
+                const matchClass = !selectedClass || s.class === selectedClass;
+                const matchName = s.name.toLowerCase().includes(search);
+                return matchClass && matchName;
+            }).forEach(s => {
+                studentSel.innerHTML += `<option value="${s.id}">${s.name} (${s.class})</option>`;
+            });
+        }
+
+        function switchTab(tab) {
+            document.getElementById("hwTab").classList.toggle("active", tab === "hw");
+            document.getElementById("clubTab").classList.toggle("active", tab === "club");
+            document.getElementById("hwForm").style.display = tab === "hw" ? "block" : "none";
+            document.getElementById("clubForm").style.display = tab === "club" ? "block" : "none";
+        }
+
+        function sendHomework() {
+            const studentId = document.getElementById("studentSelect").value;
+            const status = document.getElementById("hwStatus").value;
+            if(!studentId) return alert("Iltimos, o'quvchini tanlang!");
+
+            tg.sendData(JSON.stringify({
+                type: "homework",
+                student_id: studentId,
+                status: status
+            }));
+        }
+
+        function sendClubReport() {
+            const club = document.getElementById("clubSelect").value;
+            const count = document.getElementById("attendanceCount").value;
+            if(!club || !count) return alert("Barcha maydonlarni to'ldiring!");
+
+            tg.sendData(JSON.stringify({
+                type: "club",
+                club_name: club,
+                count: count
+            }));
+        }
+    </script>
+</body>
+</html>
